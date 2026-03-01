@@ -1,0 +1,268 @@
+/* ============================================================
+   Design System — Dark Industrial Terminal
+   Wiki Generator
+   ============================================================ */
+
+:root {
+  /* Backgrounds */
+  --bg-primary: #1a1a1a;
+  --bg-card: #242424;
+  --bg-card-inner: #1e1e1e;
+  --bg-elevated: #2a2a2a;
+  --bg-input: #1e1e1e;
+
+  /* Borders */
+  --border-default: #333333;
+  --border-subtle: #2a2a2a;
+  --border-accent: #c4652a;
+
+  /* Text */
+  --text-primary: #e8e8e8;
+  --text-secondary: #888888;
+  --text-muted: #555555;
+  --text-accent: #c4652a;
+
+  /* Accent — burnt orange / copper (the ONE accent colour) */
+  --accent: #c4652a;
+  --accent-hover: #d4753a;
+  --accent-muted: rgba(196, 101, 42, 0.15);
+
+  /* Status */
+  --status-complete: #c4652a;
+  --status-processing: #c4652a;
+  --status-failed: #8b3a3a;
+  --status-pending: #555555;
+
+  /* Progress bars */
+  --bar-primary: #c4652a;
+  --bar-secondary: #555555;
+  --bar-ghost: #333333;
+}
+
+/* ============================================================
+   Base reset for the terminal aesthetic
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html,
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes phase-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.phase-active {
+  animation: phase-pulse 1.5s ease-in-out infinite;
+  color: var(--accent);
+}
+
+.event-line {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* ============================================================
+   shadcn/ui overrides — strip defaults, apply dark terminal theme
+   ============================================================ */
+
+/* Buttons */
+.btn,
+[class*='button'],
+button[data-slot='button'] {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Inputs */
+input,
+textarea,
+select,
+[data-slot='input'] {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-color: var(--bg-input) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
+  font-family: inherit !important;
+  font-size: 13px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+input:focus,
+textarea:focus,
+[data-slot='input']:focus {
+  border-color: var(--accent) !important;
+  outline: none !important;
+}
+
+/* Cards */
+[data-slot='card'],
+.card {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-default) !important;
+}
+
+/* Badges */
+[data-slot='badge'],
+.badge {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Progress */
+[data-slot='progress'],
+progress {
+  border-radius: 0 !important;
+}
+
+/* Scrollbar — thin, accent-coloured thumb */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover);
+}
+
+/* ============================================================
+   Markdown content rendering (wiki pages)
+   ============================================================ */
+
+.wiki-content h1 {
+  font-size: 18px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.wiki-content h2 {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+
+.wiki-content h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.wiki-content p {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.wiki-content code {
+  background-color: var(--bg-card);
+  color: var(--text-accent);
+  font-size: 12px;
+  padding: 2px 6px;
+  font-family: inherit;
+}
+
+.wiki-content pre {
+  background-color: var(--bg-card-inner);
+  border: 1px solid var(--border-default);
+  padding: 12px 16px;
+  font-size: 12px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.wiki-content pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.wiki-content a {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.wiki-content a:hover {
+  text-decoration: underline;
+}
+
+.wiki-content ul,
+.wiki-content ol {
+  color: var(--text-primary);
+  font-size: 13px;
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+
+.wiki-content li {
+  margin-bottom: 4px;
+  line-height: 1.6;
+}
+
+.wiki-content ul li::marker {
+  color: var(--accent);
+  content: '▪ ';
+}
