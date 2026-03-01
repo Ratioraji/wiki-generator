@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import type { DataSource, EntityManager } from 'typeorm';
+import { Not } from 'typeorm';
 import { BaseService } from '../../common/base/base.service';
 import { Wiki } from '../entities/wiki.entity';
 import { WikiSubsystem } from '../entities/wiki-subsystem.entity';
@@ -72,9 +73,11 @@ export class WikiPersistenceService extends BaseService<Wiki> {
     branch: string,
     manager?: EntityManager,
   ): Promise<Wiki | null> {
-    // TypeORM @DeleteDateColumn automatically excludes soft-deleted rows
+    // TypeORM @DeleteDateColumn automatically excludes soft-deleted rows.
+    // Also exclude failed wikis so callers treat them as non-existent and
+    // allow a fresh generation without requiring forceRegenerate.
     return this.getRepo(manager).findOne({
-      where: { repoUrl, branch },
+      where: { repoUrl, branch, status: Not(WikiStatus.FAILED) },
     });
   }
 
