@@ -1,6 +1,7 @@
 'use client';
 
 import { use } from 'react';
+import Link from 'next/link';
 import { useWikiData } from '@/hooks/use-wiki-data';
 import { WikiViewer } from '@/components/wiki-viewer';
 
@@ -40,7 +41,7 @@ function PageHeader({ repoName }: { repoName?: string }) {
         flexShrink: 0,
       }}
     >
-      <a
+      <Link
         href="/"
         style={{
           fontSize: '12px',
@@ -52,7 +53,7 @@ function PageHeader({ repoName }: { repoName?: string }) {
         }}
       >
         Wiki Generator
-      </a>
+      </Link>
       {repoName && (
         <span
           style={{
@@ -153,7 +154,7 @@ function CenteredMessage({ icon, message, linkText }: {
       >
         {message}
       </div>
-      <a
+      <Link
         href="/"
         style={{
           marginTop: '8px',
@@ -165,7 +166,7 @@ function CenteredMessage({ icon, message, linkText }: {
         }}
       >
         {linkText}
-      </a>
+      </Link>
     </div>
   );
 }
