@@ -1,1 +1,5 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+/* Design system CSS variables, base resets, animations, shadcn overrides */
+@import "../styles/globals.css";
