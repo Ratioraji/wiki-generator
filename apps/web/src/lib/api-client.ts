@@ -8,6 +8,23 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
+// Shape of every response from the NestJS TransformInterceptor
+interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+  statusCode: number;
+  message: string;
+}
+
+// Shape of the paginated payload inside the envelope for list endpoints
+interface BackendPaginated<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
   const res = await fetch(url, {
@@ -20,7 +37,8 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(`API ${res.status}: ${body || res.statusText}`);
   }
 
-  return res.json() as Promise<T>;
+  const envelope = (await res.json()) as ApiEnvelope<T>;
+  return envelope.data;
 }
 
 export async function listWikis(
@@ -30,7 +48,17 @@ export async function listWikis(
 ): Promise<PaginatedResponse<WikiListItem>> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (search) params.set('search', search);
-  return apiFetch<PaginatedResponse<WikiListItem>>(`/wiki?${params}`);
+  const paginated = await apiFetch<BackendPaginated<WikiListItem>>(`/wiki?${params}`);
+  return {
+    success: true,
+    data: paginated.data,
+    meta: {
+      page: paginated.page,
+      limit: paginated.limit,
+      total: paginated.total,
+      totalPages: paginated.totalPages,
+    },
+  };
 }
 
 export async function checkExistingWiki(

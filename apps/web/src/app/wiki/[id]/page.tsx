@@ -141,6 +141,48 @@ function WikiPageContent({ id }: { id: string }) {
     );
   }
 
+  if (wiki.status === 'failed') {
+    return (
+      <div
+        style={{
+          backgroundColor: 'var(--bg-primary)',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+        }}
+      >
+        <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-muted)' }}>✗</div>
+        <div
+          style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            color: 'var(--text-muted)',
+          }}
+        >
+          Wiki generation failed
+        </div>
+        <a
+          href="/"
+          style={{
+            marginTop: '8px',
+            fontSize: '11px',
+            color: 'var(--text-accent)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            textDecoration: 'none',
+          }}
+        >
+          ← Try Again
+        </a>
+      </div>
+    );
+  }
+
   return <WikiViewer wiki={wiki} />;
 }
 
