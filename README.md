@@ -2,7 +2,7 @@
 
 Automatic developer documentation generator for public GitHub repositories. Paste a repo URL, get navigable wiki pages organized by user-facing features — with inline source citations and Q&A.
 
-> **Live Demo**: [https://wiki-generator.vercel.app](https://wiki-generator.vercel.app)
+> **Live Demo**: [https://web-tan-two-17.vercel.app](https://web-tan-two-17.vercel.app/)
 
 ---
 
