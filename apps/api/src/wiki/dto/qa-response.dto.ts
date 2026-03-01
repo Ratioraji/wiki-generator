@@ -7,8 +7,8 @@ export class QaSourceDto {
   @ApiProperty({ description: 'File path of the source' })
   filePath: string;
 
-  @ApiProperty({ description: 'Line range (e.g. "12-34")' })
-  lines: string;
+  @ApiProperty({ description: 'Line range (e.g. "12-34")', nullable: true })
+  lines: string | null;
 }
 
 export class QaResponseDto {

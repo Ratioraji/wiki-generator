@@ -16,7 +16,7 @@ import type { WikiSearchResult } from '../services/vector-store.service';
 
 interface QaResult {
   answer: string;
-  sources: Array<{ subsystem: string; filePath: string; lines: string }>;
+  sources: Array<{ subsystem: string; filePath: string; lines: string | null }>;
 }
 
 // ── Input shape ───────────────────────────────────────────────────────────────
@@ -119,11 +119,13 @@ export class AskQuestionUseCase extends BaseUseCase<AskQuestionInput, QaResponse
   }
 
   protected transform(result: QaResult): QaResponseDto {
-    const sources: QaSourceDto[] = result.sources.map((s) => ({
-      subsystem: s.subsystem,
-      filePath: s.filePath,
-      lines: s.lines,
-    }));
+    const sources: QaSourceDto[] = result.sources
+      .filter((s) => s.subsystem && s.filePath && s.filePath !== 'null')
+      .map((s) => ({
+        subsystem: s.subsystem,
+        filePath: s.filePath,
+        lines: s.lines === 'null' ? null : s.lines,
+      }));
 
     return { answer: result.answer, sources };
   }

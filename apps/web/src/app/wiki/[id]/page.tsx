@@ -27,12 +27,53 @@ function SkeletonBlock({
   );
 }
 
+function PageHeader({ repoName }: { repoName?: string }) {
+  return (
+    <header
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '8px 16px',
+        borderBottom: '1px solid var(--border-default)',
+        backgroundColor: 'var(--bg-primary)',
+        flexShrink: 0,
+      }}
+    >
+      <a
+        href="/"
+        style={{
+          fontSize: '12px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          color: 'var(--text-primary)',
+          textDecoration: 'none',
+        }}
+      >
+        Wiki Generator
+      </a>
+      {repoName && (
+        <span
+          style={{
+            fontSize: '11px',
+            color: 'var(--text-muted)',
+            letterSpacing: '0.05em',
+          }}
+        >
+          {repoName}
+        </span>
+      )}
+    </header>
+  );
+}
+
 function LoadingSkeleton() {
   return (
     <div
       style={{
         display: 'flex',
-        height: '100vh',
+        flex: 1,
         backgroundColor: 'var(--bg-primary)',
       }}
     >
@@ -83,107 +124,78 @@ function LoadingSkeleton() {
   );
 }
 
+function CenteredMessage({ icon, message, linkText }: {
+  icon: string;
+  message: string;
+  linkText: string;
+}) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '12px',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-muted)' }}>{icon}</div>
+      <div
+        style={{
+          fontSize: '12px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          color: 'var(--text-muted)',
+        }}
+      >
+        {message}
+      </div>
+      <a
+        href="/"
+        style={{
+          marginTop: '8px',
+          fontSize: '11px',
+          color: 'var(--text-accent)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          textDecoration: 'none',
+        }}
+      >
+        {linkText}
+      </a>
+    </div>
+  );
+}
+
 function WikiPageContent({ id }: { id: string }) {
   const { data: wiki, isLoading, isError, error } = useWikiData(id);
 
-  if (isLoading) return <LoadingSkeleton />;
+  const is404 = isError && error instanceof Error && error.message.includes('404');
 
-  if (isError || !wiki) {
-    const is404 =
-      error instanceof Error && error.message.includes('404');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <PageHeader repoName={wiki?.repoName} />
 
-    return (
-      <div
-        style={{
-          backgroundColor: 'var(--bg-primary)',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '12px',
-        }}
-      >
-        <div
-          style={{
-            fontSize: '28px',
-            fontWeight: 700,
-            color: 'var(--text-muted)',
-          }}
-        >
-          {is404 ? '404' : '✗'}
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : isError || !wiki ? (
+        <CenteredMessage
+          icon={is404 ? '404' : '✗'}
+          message={is404 ? 'Wiki not found' : 'Failed to load wiki'}
+          linkText="← Back to Home"
+        />
+      ) : wiki.status === 'failed' ? (
+        <CenteredMessage icon="✗" message="Wiki generation failed" linkText="← Try Again" />
+      ) : (
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <WikiViewer wiki={wiki} />
         </div>
-        <div
-          style={{
-            fontSize: '12px',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            color: 'var(--text-muted)',
-          }}
-        >
-          {is404 ? 'Wiki not found' : 'Failed to load wiki'}
-        </div>
-        <a
-          href="/"
-          style={{
-            marginTop: '8px',
-            fontSize: '11px',
-            color: 'var(--text-accent)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            textDecoration: 'none',
-          }}
-        >
-          ← Back to Home
-        </a>
-      </div>
-    );
-  }
-
-  if (wiki.status === 'failed') {
-    return (
-      <div
-        style={{
-          backgroundColor: 'var(--bg-primary)',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '12px',
-        }}
-      >
-        <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-muted)' }}>✗</div>
-        <div
-          style={{
-            fontSize: '12px',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            color: 'var(--text-muted)',
-          }}
-        >
-          Wiki generation failed
-        </div>
-        <a
-          href="/"
-          style={{
-            marginTop: '8px',
-            fontSize: '11px',
-            color: 'var(--text-accent)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            textDecoration: 'none',
-          }}
-        >
-          ← Try Again
-        </a>
-      </div>
-    );
-  }
-
-  return <WikiViewer wiki={wiki} />;
+      )}
+    </div>
+  );
 }
 
 export default function WikiPage({ params }: WikiPageProps) {

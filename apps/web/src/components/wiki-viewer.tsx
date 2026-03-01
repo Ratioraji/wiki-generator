@@ -182,7 +182,7 @@ export function WikiViewer({ wiki }: WikiViewerProps) {
     <div
       style={{
         display: 'flex',
-        height: '100vh',
+        height: '100%',
         overflow: 'hidden',
         backgroundColor: 'var(--bg-primary)',
       }}
