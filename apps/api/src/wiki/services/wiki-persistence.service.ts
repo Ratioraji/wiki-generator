@@ -81,6 +81,22 @@ export class WikiPersistenceService extends BaseService<Wiki> {
     });
   }
 
+  /**
+   * Find ANY non-deleted wiki for a repo+branch (including FAILED).
+   *
+   * Used by the generate use-case to detect stale FAILED records that would
+   * otherwise violate the unique constraint `idx_wikis_repo_branch_active`.
+   */
+  async findNonDeletedByRepoAndBranch(
+    repoUrl: string,
+    branch: string,
+    manager?: EntityManager,
+  ): Promise<Wiki | null> {
+    return this.getRepo(manager).findOne({
+      where: { repoUrl, branch },
+    });
+  }
+
   async getFullWiki(wikiId: string): Promise<Wiki | null> {
     return this.getRepo().findOne({
       where: { id: wikiId },

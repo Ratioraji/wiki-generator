@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 import { Subject, Observable } from 'rxjs';
+import type { DataSource } from 'typeorm';
 import type { SSEEvent } from '../interfaces/sse-event.interface';
 import type { AgentContext } from '../interfaces/agent-context.interface';
 import { GenerateWikiDto } from '../dto/generate-wiki.dto';
@@ -13,6 +15,7 @@ export class GenerateWikiUseCase {
   private readonly logger = new Logger(GenerateWikiUseCase.name);
 
   constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
     private readonly wikiPersistenceService: WikiPersistenceService,
     private readonly wikiCacheService: WikiCacheService,
     private readonly orchestrator: WikiGenerationOrchestrator,
@@ -48,48 +51,76 @@ export class GenerateWikiUseCase {
     repoName: string,
     subject: Subject<SSEEvent>,
   ): Promise<void> {
-    // 1. Dedup check
-    const existing = await this.wikiPersistenceService.findActiveByRepoAndBranch(
-      normalisedUrl,
-      dto.branch,
-    );
+    let wikiId: string | undefined;
 
-    if (existing) {
-      if (!dto.forceRegenerate) {
-        // Wiki already exists — tell the client which one to load
-        subject.next({ type: 'existing', wikiId: existing.id });
+    try {
+      // 1. Dedup check + soft-delete + create inside a single transaction
+      //    so if the create fails, the soft-delete is rolled back.
+      let existingId: string | null = null;
+
+      const wiki = await this.dataSource.transaction(async (manager) => {
+        // Use the non-filtered query to catch ALL non-deleted wikis (including
+        // FAILED ones) that would otherwise violate the unique constraint
+        // `idx_wikis_repo_branch_active`.
+        const existing = await this.wikiPersistenceService.findNonDeletedByRepoAndBranch(
+          normalisedUrl,
+          dto.branch,
+          manager,
+        );
+
+        if (existing) {
+          const isFailed = existing.status === 'failed';
+
+          if (!isFailed && !dto.forceRegenerate) {
+            // Active (complete/processing) wiki exists — signal the caller
+            return existing;
+          }
+
+          // Failed wiki or force regenerate: soft-delete the old record
+          await this.wikiPersistenceService.softDelete(existing.id, manager);
+          existingId = existing.id;
+        }
+
+        // Create a new wiki record in PROCESSING status
+        return this.wikiPersistenceService.createWiki(
+          normalisedUrl,
+          repoName,
+          dto.branch,
+          manager,
+        );
+      });
+
+      // If an existing wiki was returned without force-regenerate, emit and exit
+      if (wiki.status !== 'processing') {
+        subject.next({ type: 'existing', wikiId: wiki.id });
         subject.complete();
         return;
       }
 
-      // Force regenerate: soft-delete the old record and invalidate Redis cache
-      await this.wikiPersistenceService.softDelete(existing.id);
-      await this.wikiCacheService.invalidate(existing.id, normalisedUrl, dto.branch);
-    }
+      wikiId = wiki.id;
 
-    // 2. Create a new wiki record in PROCESSING status
-    const wiki = await this.wikiPersistenceService.createWiki(
-      normalisedUrl,
-      repoName,
-      dto.branch,
-    );
+      // Invalidate Redis cache AFTER the DB transaction has committed
+      if (existingId) {
+        await this.wikiCacheService.invalidate(existingId, normalisedUrl, dto.branch);
+      }
 
-    const context: AgentContext = {
-      wikiId: wiki.id,
-      repoUrl: normalisedUrl,
-      branch: dto.branch,
-      repoName,
-    };
+      const context: AgentContext = {
+        wikiId: wiki.id,
+        repoUrl: normalisedUrl,
+        branch: dto.branch,
+        repoName,
+      };
 
-    // 3. Run the full pipeline — this is the long-running work
-    try {
+      // 2. Run the full pipeline — this is the long-running work
       await this.orchestrator.generate(context, subject);
       subject.complete();
     } catch (error) {
       this.logger.error(
         `Wiki generation failed for ${normalisedUrl}@${dto.branch}: ${(error as Error).message}`,
       );
-      await this.wikiPersistenceService.markFailed(wiki.id);
+      if (wikiId) {
+        await this.wikiPersistenceService.markFailed(wikiId).catch(() => {});
+      }
       subject.next({ type: 'error', error: (error as Error).message });
       subject.complete();
     }
