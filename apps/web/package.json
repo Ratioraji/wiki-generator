@@ -6,7 +6,8 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "lint": "next lint",
-    "start": "next start --port 3000"
+    "start": "next start --port 3000",
+    "test": "bun test"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",
