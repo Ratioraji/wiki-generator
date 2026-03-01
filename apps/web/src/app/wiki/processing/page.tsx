@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProcessingStream } from '@/components/processing-stream';
 
@@ -44,9 +45,9 @@ function ProcessingPageContent() {
         }}
       >
         ✗ No repository URL provided.{' '}
-        <a href="/" style={{ color: 'var(--text-accent)' }}>
+        <Link href="/" style={{ color: 'var(--text-accent)' }}>
           Go back
-        </a>
+        </Link>
       </div>
     );
   }
