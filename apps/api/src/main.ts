@@ -61,17 +61,15 @@ async function bootstrap() {
     new TransformInterceptor(),
   );
 
-  // ── Swagger (dev only) ────────────────────────────────────────────────────
-  if (process.env.NODE_ENV !== 'production') {
-    const config = new DocumentBuilder()
-      .setTitle('Wiki Generator API')
-      .setDescription('Generate developer documentation from GitHub repositories')
-      .setVersion('1.0')
-      .build();
+  // ── Swagger ──────────────────────────────────────────────────────────────
+  const config = new DocumentBuilder()
+    .setTitle('Wiki Generator API')
+    .setDescription('Generate developer documentation from GitHub repositories')
+    .setVersion('1.0')
+    .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
-  }
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port, '0.0.0.0');
