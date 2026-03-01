@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 import { askQuestion } from '@/lib/api-client';
-import { CodeCitation } from './code-citation';
 import type { QaResponse } from '@/types/wiki.types';
 import type { ComponentProps } from 'react';
 
@@ -169,17 +168,15 @@ export function QaPanel({ wikiId }: QaPanelProps) {
                         >
                           {src.subsystem}
                         </span>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>·</span>
-                        <CodeCitation
-                          filePath={src.filePath}
-                          lineStart={parseInt(src.lines?.split('-')[0]?.replace('L', '') ?? '1')}
-                          lineEnd={parseInt(
-                            src.lines?.split('-')[1]?.replace('L', '') ??
-                              src.lines?.split('-')[0]?.replace('L', '') ??
-                              '1',
-                          )}
-                          githubUrl={`#${src.filePath}`}
-                        />
+                        {src.filePath && (
+                          <>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>·</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-accent)' }}>
+                              {src.filePath}
+                              {src.lines ? `#L${src.lines}` : ''}
+                            </span>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
