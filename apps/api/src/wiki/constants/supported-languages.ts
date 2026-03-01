@@ -1,0 +1,17 @@
+export const SUPPORTED_EXTENSIONS: Record<string, string> = {
+  '.ts': 'typescript',
+  '.tsx': 'typescript',
+  '.js': 'javascript',
+  '.jsx': 'javascript',
+  '.py': 'python',
+  '.rb': 'ruby',
+  '.go': 'go',
+  '.rs': 'rust',
+  '.java': 'java',
+  '.kt': 'kotlin',
+  '.swift': 'swift',
+  '.cs': 'csharp',
+  '.php': 'php',
+  '.vue': 'vue',
+  '.svelte': 'svelte',
+};
