@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RedisProvider } from './providers/redis.provider';
 import { HealthController } from './health/health.controller';
+import { WikiModule } from './wiki/wiki.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthController } from './health/health.controller';
       retryAttempts: 3,
       retryDelay: 3000,
     }),
+    WikiModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, RedisProvider],
