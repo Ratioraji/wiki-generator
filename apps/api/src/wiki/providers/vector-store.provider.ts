@@ -1,10 +1,13 @@
 import type { Provider } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
+import { Pinecone } from '@pinecone-database/pinecone';
+import type { RecordMetadata } from '@pinecone-database/pinecone';
 
 export const VECTOR_STORE_CLIENT = 'VECTOR_STORE_CLIENT';
 
 // ── Swappable interface ───────────────────────────────────────────────────────
 // VectorStoreService depends only on this interface. Swap the provider to
-// point at Pinecone (or any other backend) without changing the service.
+// point at a different backend without changing the service.
 
 export interface VectorSearchResult {
   id: string;
@@ -29,29 +32,18 @@ export interface VectorStore {
   deleteNamespace(namespace: string): Promise<void>;
 }
 
-// ── In-memory MVP implementation ──────────────────────────────────────────────
+// ── Pinecone implementation ──────────────────────────────────────────────────
 
-interface StoredVector {
-  vector: number[];
-  metadata: Record<string, unknown>;
-}
+const EMBEDDING_DIMENSION = 1536; // text-embedding-3-small
 
-function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0;
-  let magA = 0;
-  let magB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
+class PineconeVectorStore implements VectorStore {
+  private readonly logger = new Logger('PineconeVectorStore');
+  private readonly index: ReturnType<Pinecone['index']>;
+
+  constructor(client: Pinecone, indexName: string) {
+    this.index = client.index(indexName);
+    this.logger.log(`Connected to Pinecone index "${indexName}"`);
   }
-  const denom = Math.sqrt(magA) * Math.sqrt(magB);
-  return denom === 0 ? 0 : dot / denom;
-}
-
-class InMemoryVectorStore implements VectorStore {
-  // namespace (wikiId) → id → stored vector + metadata
-  private readonly store = new Map<string, Map<string, StoredVector>>();
 
   async upsert(
     namespace: string,
@@ -59,10 +51,9 @@ class InMemoryVectorStore implements VectorStore {
     vector: number[],
     metadata: Record<string, unknown>,
   ): Promise<void> {
-    if (!this.store.has(namespace)) {
-      this.store.set(namespace, new Map());
-    }
-    this.store.get(namespace)!.set(id, { vector, metadata });
+    await this.index.namespace(namespace).upsert({
+      records: [{ id, values: vector, metadata: metadata as RecordMetadata }],
+    });
   }
 
   async search(
@@ -70,31 +61,54 @@ class InMemoryVectorStore implements VectorStore {
     vector: number[],
     topK: number,
   ): Promise<VectorSearchResult[]> {
-    const ns = this.store.get(namespace);
-    if (!ns || ns.size === 0) return [];
+    const result = await this.index.namespace(namespace).query({
+      vector,
+      topK,
+      includeMetadata: true,
+    });
 
-    return Array.from(ns.entries())
-      .map(([id, stored]) => ({
-        id,
-        score: cosineSimilarity(vector, stored.vector),
-        metadata: stored.metadata,
-      }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, topK);
+    return (result.matches ?? []).map((match) => ({
+      id: match.id,
+      score: match.score ?? 0,
+      metadata: (match.metadata as Record<string, unknown>) ?? {},
+    }));
   }
 
   async deleteNamespace(namespace: string): Promise<void> {
-    this.store.delete(namespace);
+    await this.index.namespace(namespace).deleteAll();
   }
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
-// To swap to Pinecone: replace `new InMemoryVectorStore()` with a Pinecone
-// adapter that implements VectorStore. VectorStoreService requires no changes.
 
 export const VectorStoreProvider: Provider = {
   provide: VECTOR_STORE_CLIENT,
-  useFactory: (): VectorStore => {
-    return new InMemoryVectorStore();
+  useFactory: async (): Promise<VectorStore> => {
+    const logger = new Logger('VectorStoreProvider');
+    const apiKey = process.env.PINECONE_API_KEY;
+    const indexName = process.env.PINECONE_INDEX ?? 'wiki-embeddings';
+
+    if (!apiKey) {
+      throw new Error('PINECONE_API_KEY environment variable is required');
+    }
+
+    const client = new Pinecone({ apiKey });
+
+    // Create the index if it doesn't exist yet
+    const existing = await client.listIndexes();
+    const exists = existing.indexes?.some((i) => i.name === indexName);
+
+    if (!exists) {
+      logger.log(`Index "${indexName}" not found — creating serverless index…`);
+      await client.createIndex({
+        name: indexName,
+        dimension: EMBEDDING_DIMENSION,
+        metric: 'cosine',
+        spec: { serverless: { cloud: 'aws', region: 'us-east-1' } },
+      });
+      logger.log(`Index "${indexName}" created`);
+    }
+
+    return new PineconeVectorStore(client, indexName);
   },
 };
