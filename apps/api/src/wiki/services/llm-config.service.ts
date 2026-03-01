@@ -6,12 +6,14 @@ export class LlmConfigService {
     return process.env.LLM_MODEL ?? 'gpt-4o-mini';
   }
 
+  // 5 retries with 2 s base → delays of 2, 4, 8, 16, 32 s (total ~62 s window).
+  // For TPM exhaustion the window needs to cover ~60 s; this just fits.
   get maxRetries(): number {
-    return 3;
+    return 5;
   }
 
   get retryDelayMs(): number {
-    return 1000;
+    return 2000;
   }
 
   /** Low temperature — deterministic structured output */

@@ -200,38 +200,55 @@ export class WikiGenerationOrchestrator {
 
     const sourceFiles = buildSourceMap(parsedFiles);
 
-    const results = await Promise.all(
-      groupingPlan.subsystems.map((group) =>
-        this.safeDispatch(
-          group.name,
-          async () => {
-            const result = await this.deepAnalysisAgent.analyze(
-              group,
-              classifications,
-              sourceFiles,
-              repoContext,
+    // Cap concurrent deep-analysis calls so that a large classifier wave does
+    // not cause all agents to pile up on an already-depleted TPM budget.
+    const MAX_CONCURRENT_AGENTS = 3;
+
+    const agentTasks = groupingPlan.subsystems.map((group) => () =>
+      this.safeDispatch(
+        group.name,
+        async () => {
+          const result = await this.deepAnalysisAgent.analyze(
+            group,
+            classifications,
+            sourceFiles,
+            repoContext,
+          );
+
+          // Fire-and-forget: embed immediately so search works as each subsystem finishes
+          this.vectorStoreService.embedSubsystem(wikiId, result).catch((err) => {
+            this.logger.warn(
+              `Vector embed failed for "${group.name}": ${(err as Error).message}`,
             );
+          });
 
-            // Fire-and-forget: embed immediately so search works as each subsystem finishes
-            this.vectorStoreService.embedSubsystem(wikiId, result).catch((err) => {
-              this.logger.warn(
-                `Vector embed failed for "${group.name}": ${(err as Error).message}`,
-              );
-            });
+          sseSubject.next({
+            type: 'progress',
+            phase: 'analysis',
+            subsystem: group.name,
+            message: `Analysed "${group.name}"`,
+          });
 
-            sseSubject.next({
-              type: 'progress',
-              phase: 'analysis',
-              subsystem: group.name,
-              message: `Analysed "${group.name}"`,
-            });
-
-            return result;
-          },
-          sseSubject,
-        ),
+          return result;
+        },
+        sseSubject,
       ),
     );
+
+    const results = await runWithConcurrency(agentTasks, MAX_CONCURRENT_AGENTS);
+
+    const succeeded = results.filter((r: SubsystemWikiContent | null) => r !== null).length;
+    this.logger.log(
+      `Deep analysis complete: ${succeeded}/${results.length} subsystems succeeded`,
+    );
+
+    // If every agent failed the pipeline produced nothing useful. Throw so
+    // the wiki is marked failed rather than saved as complete with 0 subsystems.
+    if (succeeded === 0 && results.length > 0) {
+      throw new Error(
+        `All ${results.length} deep-analysis agents failed — wiki generation aborted`,
+      );
+    }
 
     sseSubject.next({ type: 'progress', progress: 90, phase: 'analysis', message: 'Analysis complete' });
 
@@ -339,6 +356,29 @@ function buildSourceMap(parsedFiles: ParsedFile[]): Map<string, string> {
     map.set(f.path, f.content);
   }
   return map;
+}
+
+/**
+ * Run an array of async task factories with a bounded number of simultaneous
+ * executions. Results are returned in the same order as the input tasks.
+ */
+async function runWithConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  maxConcurrent: number,
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  const queue = tasks.map((task, i) => ({ task, i }));
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const item = queue.shift();
+      if (!item) break;
+      results[item.i] = await item.task();
+    }
+  }
+
+  await Promise.all(Array.from({ length: maxConcurrent }, () => worker()));
+  return results;
 }
 
 /**
