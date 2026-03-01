@@ -8,8 +8,15 @@ import { TOKEN_BUDGETS } from '../constants/token-budgets';
 const CHARS_PER_TOKEN = 3;
 const INPUT_CHAR_BUDGET = TOKEN_BUDGETS.FILE_CLASSIFIER_INPUT * CHARS_PER_TOKEN;
 
-// Target batch size; never exceed this per LLM call.
-const BATCH_SIZE = 4;
+// Files per LLM call. Larger batches mean fewer total calls and less
+// parallel scheduling overhead. 8 files × ~375 tokens/file ≈ 3 000 output
+// tokens — comfortably within the raised FILE_CLASSIFIER_OUTPUT budget.
+const BATCH_SIZE = 8;
+
+// Maximum number of classifier batches running at the same time.
+// Keeping this low prevents a large repo from exhausting the TPM limit in
+// one burst — batches naturally pace themselves via LLM call latency.
+const MAX_CONCURRENT_BATCHES = 5;
 
 @Injectable()
 export class FileClassifierAgent {
@@ -33,8 +40,9 @@ export class FileClassifierAgent {
       `FileClassifierAgent: ${parsedFiles.length} files → ${batches.length} batches`,
     );
 
-    const results = await Promise.all(
-      batches.map((batch, i) => this.classifyBatch(batch, groupingPlan, i)),
+    const results = await runWithConcurrency(
+      batches.map((batch, i) => () => this.classifyBatch(batch, groupingPlan, i)),
+      MAX_CONCURRENT_BATCHES,
     );
 
     return results.flat();
@@ -183,4 +191,33 @@ export class FileClassifierAgent {
       '',
     ].join('\n');
   }
+}
+
+// ── Concurrency helper ────────────────────────────────────────────────────────
+
+/**
+ * Run an array of async task factories with a bounded number of simultaneous
+ * executions. Results are returned in the same order as the input tasks.
+ *
+ * Unlike Promise.all, this never starts more than `maxConcurrent` tasks at
+ * once — preventing large repos from bursting all LLM calls simultaneously
+ * and exhausting the OpenAI TPM limit.
+ */
+async function runWithConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  maxConcurrent: number,
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  const queue = tasks.map((task, i) => ({ task, i }));
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const item = queue.shift();
+      if (!item) break;
+      results[item.i] = await item.task();
+    }
+  }
+
+  await Promise.all(Array.from({ length: maxConcurrent }, () => worker()));
+  return results;
 }

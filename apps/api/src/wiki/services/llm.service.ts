@@ -20,6 +20,10 @@ const NO_RETRY_STATUSES = new Set([400, 401, 404]);
 // Status codes that should be retried
 const RETRY_STATUSES = new Set([429, 500, 502, 503, 529]);
 
+// Minimum wait when TPM (tokens-per-minute) is exhausted — the whole
+// 60-second window needs to drain before the budget is replenished.
+const TPM_MIN_WAIT_MS = 60_000;
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -31,6 +35,30 @@ function isRetryableError(error: unknown): boolean {
     return RETRY_STATUSES.has(error.status);
   }
   return false;
+}
+
+/**
+ * Read the Retry-After header from a 429 APIError.
+ * OpenAI sends either a float seconds value (e.g. "0.494") or an integer.
+ * Returns 0 when the header is absent.
+ */
+function retryAfterMs(error: APIError): number {
+  const raw =
+    typeof error.headers?.['retry-after'] === 'string'
+      ? error.headers['retry-after']
+      : null;
+  if (!raw) return 0;
+  const secs = parseFloat(raw);
+  return Number.isFinite(secs) ? Math.ceil(secs * 1000) : 0;
+}
+
+/**
+ * True when the 429 is a tokens-per-minute exhaustion (not requests-per-minute).
+ * TPM exhaustion requires waiting for the full rolling window to drain;
+ * RPM exhaustion resets much faster and the normal backoff is sufficient.
+ */
+function isTpmExhausted(error: APIError): boolean {
+  return typeof error.message === 'string' && error.message.includes('tokens per min');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +113,17 @@ export class LlmService {
             (attempt > 1 ? ` attempt=${attempt}` : ''),
         );
 
-        const content = completion.choices[0]?.message?.content;
+        // Detect truncated output before attempting to parse.
+        // finish_reason === 'length' means the model ran out of max_tokens
+        // and the JSON is cut mid-string — parsing would always fail.
+        const choice = completion.choices[0];
+        if (choice?.finish_reason === 'length') {
+          throw new Error(
+            `LLM output truncated (finish_reason=length): increase TOKEN_BUDGETS for this call`,
+          );
+        }
+
+        const content = choice?.message?.content;
         if (!content) {
           throw new Error('LLM returned empty content');
         }
@@ -104,8 +142,15 @@ export class LlmService {
 
         if (attempt === totalAttempts) break;
 
-        // Exponential backoff: 1s, 2s, 4s
-        const delayMs = this.config.retryDelayMs * Math.pow(2, attempt - 1);
+        // For 429s: honour the Retry-After header when present, and use
+        // a full-minute minimum wait when TPM (not RPM) is exhausted.
+        let delayMs = this.config.retryDelayMs * Math.pow(2, attempt - 1);
+        if (error instanceof APIError && error.status === 429) {
+          const suggested = retryAfterMs(error);
+          const tpmFloor = isTpmExhausted(error) ? TPM_MIN_WAIT_MS : 0;
+          delayMs = Math.max(delayMs, suggested, tpmFloor);
+        }
+
         this.logger.warn(
           `LLM [structured] attempt ${attempt}/${totalAttempts} failed` +
             ` (${(error as APIError).status ?? 'timeout'})` +
@@ -172,7 +217,13 @@ export class LlmService {
 
         if (attempt === totalAttempts) break;
 
-        const delayMs = this.config.retryDelayMs * Math.pow(2, attempt - 1);
+        let delayMs = this.config.retryDelayMs * Math.pow(2, attempt - 1);
+        if (error instanceof APIError && error.status === 429) {
+          const suggested = retryAfterMs(error);
+          const tpmFloor = isTpmExhausted(error) ? TPM_MIN_WAIT_MS : 0;
+          delayMs = Math.max(delayMs, suggested, tpmFloor);
+        }
+
         this.logger.warn(
           `LLM [text] attempt ${attempt}/${totalAttempts} failed` +
             ` (${(error as APIError).status ?? 'timeout'})` +
