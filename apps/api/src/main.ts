@@ -74,7 +74,7 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT ?? 3001;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`API server listening on http://localhost:${port}`);
   console.log(`Health:  http://localhost:${port}/health`);
 
