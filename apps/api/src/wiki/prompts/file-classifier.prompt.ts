@@ -19,21 +19,23 @@ DO NOT generate, modify, or invent line numbers. Your output must copy lineStart
 
 Respond ONLY with valid JSON matching this exact schema — no markdown fences, no explanation:
 
-[
-  {
-    "filePath": "<relative/path/to/file.ts>",
-    "groupId": "<kebab-case-id matching one of the provided subsystems>",
-    "summary": "<one sentence: what this file does>",
-    "functionSummaries": [
-      {
-        "name": "<exact name from input structures>",
-        "lineStart": <copy exactly from input — do not change>,
-        "lineEnd": <copy exactly from input — do not change>,
-        "description": "<what this function/class/export does>",
-        "isPublicInterface": <true if called by external code or users, false if internal>
-      }
-    ]
-  }
-]
+{
+  "classifications": [
+    {
+      "filePath": "<relative/path/to/file.ts>",
+      "groupId": "<kebab-case-id matching one of the provided subsystems>",
+      "summary": "<one sentence: what this file does>",
+      "functionSummaries": [
+        {
+          "name": "<exact name from input structures>",
+          "lineStart": <copy exactly from input — do not change>,
+          "lineEnd": <copy exactly from input — do not change>,
+          "description": "<what this function/class/export does>",
+          "isPublicInterface": <true if called by external code or users, false if internal>
+        }
+      ]
+    }
+  ]
+}
 
-Return one object per file provided. If a file has no structures, return an empty functionSummaries array.`;
+The top-level key MUST be "classifications". Return one object per file provided. If a file has no structures, return an empty functionSummaries array.`;

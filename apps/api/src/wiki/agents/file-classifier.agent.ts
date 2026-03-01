@@ -103,16 +103,13 @@ export class FileClassifierAgent {
     const userPrompt = this.buildUserPrompt(batch, groupingPlan);
 
     try {
-      const result = await this.llmService.generateStructured<FileClassification[]>(
-        FILE_CLASSIFIER_SYSTEM_PROMPT,
-        userPrompt,
-        { maxTokens: TOKEN_BUDGETS.FILE_CLASSIFIER_OUTPUT },
-      );
+      const result = await this.llmService.generateStructured<{
+        classifications: FileClassification[];
+      }>(FILE_CLASSIFIER_SYSTEM_PROMPT, userPrompt, {
+        maxTokens: TOKEN_BUDGETS.FILE_CLASSIFIER_OUTPUT,
+      });
 
-      // Normalise: LLM sometimes wraps the array in an object
-      const classifications = Array.isArray(result)
-        ? result
-        : ((result as { classifications?: FileClassification[] }).classifications ?? []);
+      const classifications = result.classifications ?? [];
 
       return classifications;
     } catch (error) {
