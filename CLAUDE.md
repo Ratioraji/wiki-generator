@@ -351,11 +351,6 @@ Production API runs `node dist/main.js` (not Bun). Migrations run via release co
 # feat(web:component): build wiki viewer with sidebar navigation
 ```
 
-### Global rules
-
-1. **NEVER stage or commit `.claude/`, `CLAUDE.md`, or any Anthropic configuration files.** Add to `.gitignore`.
-2. **NEVER add Anthropic/Claude as a co-author or contributor** in commit messages. No `Co-authored-by` or `Signed-off-by` trailers referencing AI assistants.
-
 ---
 
 ## Testing Checklist
