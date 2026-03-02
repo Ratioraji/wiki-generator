@@ -3,4 +3,5 @@ export interface AgentContext {
   repoUrl: string;
   branch: string;
   repoName: string;
+  userId: string;
 }

@@ -47,7 +47,7 @@ export class WikiGenerationOrchestrator {
     context: AgentContext,
     sseSubject: Subject<SSEEvent>,
   ): Promise<void> {
-    const { wikiId, repoUrl, branch } = context;
+    const { wikiId, repoUrl, branch, userId } = context;
 
     try {
       // Step 1: Clone the repo and collect files
@@ -88,6 +88,7 @@ export class WikiGenerationOrchestrator {
         wikiId,
         repoUrl,
         branch,
+        userId,
         groupingPlan,
         classifications,
         analysisResults,
@@ -261,6 +262,7 @@ export class WikiGenerationOrchestrator {
     wikiId: string,
     repoUrl: string,
     branch: string,
+    userId: string,
     groupingPlan: GroupingPlan,
     classifications: FileClassification[],
     analysisResults: Array<SubsystemWikiContent | null>,
@@ -309,7 +311,7 @@ export class WikiGenerationOrchestrator {
 
     const completedWiki = await this.wikiPersistenceService.completeWiki(wikiId, completeData);
     const responseDto = mapWikiToResponseDto(completedWiki);
-    await this.wikiCacheService.cacheWiki(wikiId, repoUrl, branch, responseDto);
+    await this.wikiCacheService.cacheWiki(wikiId, repoUrl, branch, responseDto, userId);
   }
 
   // ── safeDispatch ──────────────────────────────────────────────────────────────

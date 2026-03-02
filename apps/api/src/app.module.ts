@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RedisProvider } from './providers/redis.provider';
 import { HealthController } from './health/health.controller';
+import { AuthModule } from './auth/auth.module';
 import { WikiModule } from './wiki/wiki.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { WikiModule } from './wiki/wiki.module';
       retryAttempts: 3,
       retryDelay: 3000,
     }),
+    AuthModule,
     WikiModule,
   ],
   controllers: [AppController, HealthController],

@@ -14,30 +14,31 @@ export class WikiCacheService {
 
   /**
    * Atomically set both cache keys using a Redis pipeline.
-   *   wiki:{wikiId}            → full wiki JSON
-   *   wiki:lookup:{repoHash}   → wikiId string
+   *   wiki:{userId}:{wikiId}            → full wiki JSON
+   *   wiki:lookup:{userId}:{repoHash}   → wikiId string
    */
   async cacheWiki(
     wikiId: string,
     repoUrl: string,
     branch: string,
     data: WikiResponseDto,
+    userId: string,
   ): Promise<void> {
     const json = JSON.stringify(data);
     const repoHash = this.hashRepoKey(repoUrl, branch);
 
     await this.redis
       .pipeline()
-      .set(`wiki:${wikiId}`, json, 'EX', TTL_SECONDS)
-      .set(`wiki:lookup:${repoHash}`, wikiId, 'EX', TTL_SECONDS)
+      .set(`wiki:${userId}:${wikiId}`, json, 'EX', TTL_SECONDS)
+      .set(`wiki:lookup:${userId}:${repoHash}`, wikiId, 'EX', TTL_SECONDS)
       .exec();
   }
 
   // ── Read ────────────────────────────────────────────────────────────────────
 
   /** Returns the full cached wiki or null on miss. */
-  async getWiki(wikiId: string): Promise<WikiResponseDto | null> {
-    const raw = await this.redis.get(`wiki:${wikiId}`);
+  async getWiki(wikiId: string, userId: string): Promise<WikiResponseDto | null> {
+    const raw = await this.redis.get(`wiki:${userId}:${wikiId}`);
     if (!raw) return null;
     return JSON.parse(raw) as WikiResponseDto;
   }
@@ -46,9 +47,10 @@ export class WikiCacheService {
   async findExistingWikiId(
     repoUrl: string,
     branch: string,
+    userId: string,
   ): Promise<string | null> {
     const repoHash = this.hashRepoKey(repoUrl, branch);
-    return this.redis.get(`wiki:lookup:${repoHash}`);
+    return this.redis.get(`wiki:lookup:${userId}:${repoHash}`);
   }
 
   // ── Invalidate ──────────────────────────────────────────────────────────────
@@ -58,9 +60,10 @@ export class WikiCacheService {
     wikiId: string,
     repoUrl: string,
     branch: string,
+    userId: string,
   ): Promise<void> {
     const repoHash = this.hashRepoKey(repoUrl, branch);
-    await this.redis.del(`wiki:${wikiId}`, `wiki:lookup:${repoHash}`);
+    await this.redis.del(`wiki:${userId}:${wikiId}`, `wiki:lookup:${userId}:${repoHash}`);
   }
 
   // ── Internal ────────────────────────────────────────────────────────────────

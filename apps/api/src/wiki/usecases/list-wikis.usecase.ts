@@ -23,6 +23,7 @@ export class ListWikisUseCase extends BaseUseCase<
 
   async execute(
     dto: ListWikisDto,
+    userId?: string,
   ): Promise<UseCaseResponse<PaginatedResponseDto<WikiListItemDto>>> {
     const page = dto.page ?? 1;
     const limit = dto.limit ?? 20;
@@ -31,6 +32,7 @@ export class ListWikisUseCase extends BaseUseCase<
       page,
       limit,
       dto.search,
+      userId,
     );
 
     const items = data.map((wiki) => this.transform(wiki));

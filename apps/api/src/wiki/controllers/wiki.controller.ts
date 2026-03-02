@@ -7,9 +7,13 @@ import {
   Param,
   Res,
   Header,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { User } from '../../auth/entities/user.entity';
 import { GenerateWikiUseCase } from '../usecases/generate-wiki.usecase';
 import { GetWikiUseCase } from '../usecases/get-wiki.usecase';
 import { ListWikisUseCase } from '../usecases/list-wikis.usecase';
@@ -22,6 +26,7 @@ import { AskQuestionDto } from '../dto/ask-question.dto';
 
 @ApiTags('wiki')
 @Controller('wiki')
+@UseGuards(JwtAuthGuard)
 export class WikiController {
   constructor(
     private readonly generateWikiUseCase: GenerateWikiUseCase,
@@ -50,10 +55,10 @@ export class WikiController {
   @ApiOperation({ summary: 'Generate wiki from GitHub repository (SSE stream)' })
   @ApiResponse({ status: 201, description: 'SSE stream opened — events emitted until complete or error' })
   @ApiResponse({ status: 400, description: 'Invalid request body' })
-  generate(@Body() dto: GenerateWikiDto, @Res() res: Response): void {
+  generate(@CurrentUser() user: User, @Body() dto: GenerateWikiDto, @Res() res: Response): void {
     res.flushHeaders();
 
-    this.generateWikiUseCase.execute(dto).subscribe({
+    this.generateWikiUseCase.execute(dto, user.id).subscribe({
       next: (event) => res.write(`data: ${JSON.stringify(event)}\n\n`),
       complete: () => res.end(),
       error: () => res.end(),
@@ -64,8 +69,8 @@ export class WikiController {
   @Get()
   @ApiOperation({ summary: 'List all generated wikis' })
   @ApiResponse({ status: 200, description: 'Paginated list of wikis' })
-  list(@Query() dto: ListWikisDto) {
-    return this.listWikisUseCase.execute(dto);
+  list(@CurrentUser() user: User, @Query() dto: ListWikisDto) {
+    return this.listWikisUseCase.execute(dto, user.id);
   }
 
   /**
@@ -77,8 +82,8 @@ export class WikiController {
   @Get('check')
   @ApiOperation({ summary: 'Check if a wiki already exists for a given repo and branch' })
   @ApiResponse({ status: 200, description: 'Existence check result with optional wikiId and createdAt' })
-  check(@Query() dto: CheckExistingWikiDto) {
-    return this.checkExistingWikiUseCase.execute(dto);
+  check(@CurrentUser() user: User, @Query() dto: CheckExistingWikiDto) {
+    return this.checkExistingWikiUseCase.execute(dto, user.id);
   }
 
   /** GET /wiki/:id — full wiki with subsystems and file maps. */
@@ -86,8 +91,8 @@ export class WikiController {
   @ApiOperation({ summary: 'Get full wiki by ID' })
   @ApiResponse({ status: 200, description: 'Full wiki content with subsystems and file maps' })
   @ApiResponse({ status: 404, description: 'Wiki not found' })
-  findOne(@Param('id') id: string) {
-    return this.getWikiUseCase.execute(id);
+  findOne(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.getWikiUseCase.execute(id, user.id);
   }
 
   /** POST /wiki/:id/ask — RAG-based Q&A over a completed wiki. */
@@ -96,7 +101,7 @@ export class WikiController {
   @ApiResponse({ status: 200, description: 'Answer with subsystem and file citations' })
   @ApiResponse({ status: 400, description: 'Wiki is not yet complete' })
   @ApiResponse({ status: 404, description: 'Wiki not found' })
-  ask(@Param('id') id: string, @Body() dto: AskQuestionDto) {
-    return this.askQuestionUseCase.execute({ wikiId: id, question: dto.question });
+  ask(@CurrentUser() user: User, @Param('id') id: string, @Body() dto: AskQuestionDto) {
+    return this.askQuestionUseCase.execute({ wikiId: id, question: dto.question, userId: user.id });
   }
 }

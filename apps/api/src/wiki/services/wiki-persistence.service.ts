@@ -54,6 +54,7 @@ export class WikiPersistenceService extends BaseService<Wiki> {
     repoUrl: string,
     repoName: string,
     branch: string,
+    userId: string,
     manager?: EntityManager,
   ): Promise<Wiki> {
     const repo = this.getRepo(manager);
@@ -61,6 +62,7 @@ export class WikiPersistenceService extends BaseService<Wiki> {
       repoUrl,
       repoName,
       branch,
+      userId,
       status: WikiStatus.PROCESSING,
     });
     return repo.save(wiki);
@@ -71,13 +73,14 @@ export class WikiPersistenceService extends BaseService<Wiki> {
   async findActiveByRepoAndBranch(
     repoUrl: string,
     branch: string,
+    userId: string,
     manager?: EntityManager,
   ): Promise<Wiki | null> {
     // TypeORM @DeleteDateColumn automatically excludes soft-deleted rows.
     // Also exclude failed wikis so callers treat them as non-existent and
     // allow a fresh generation without requiring forceRegenerate.
     return this.getRepo(manager).findOne({
-      where: { repoUrl, branch, status: Not(WikiStatus.FAILED) },
+      where: { repoUrl, branch, userId, status: Not(WikiStatus.FAILED) },
     });
   }
 
@@ -90,16 +93,20 @@ export class WikiPersistenceService extends BaseService<Wiki> {
   async findNonDeletedByRepoAndBranch(
     repoUrl: string,
     branch: string,
+    userId: string,
     manager?: EntityManager,
   ): Promise<Wiki | null> {
     return this.getRepo(manager).findOne({
-      where: { repoUrl, branch },
+      where: { repoUrl, branch, userId },
     });
   }
 
-  async getFullWiki(wikiId: string): Promise<Wiki | null> {
+  async getFullWiki(wikiId: string, userId?: string): Promise<Wiki | null> {
+    const where: Record<string, unknown> = { id: wikiId };
+    if (userId) where.userId = userId;
+
     return this.getRepo().findOne({
-      where: { id: wikiId },
+      where,
       relations: { subsystems: true, fileMaps: true },
       order: { subsystems: { displayOrder: 'ASC' } },
     });
@@ -109,12 +116,17 @@ export class WikiPersistenceService extends BaseService<Wiki> {
     page: number,
     limit: number,
     search?: string,
+    userId?: string,
   ): Promise<{ data: Wiki[]; total: number }> {
     const qb = this.getRepo()
       .createQueryBuilder('wiki')
       .orderBy('wiki.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
+
+    if (userId) {
+      qb.andWhere('wiki.userId = :userId', { userId });
+    }
 
     if (search?.trim()) {
       qb.andWhere('wiki.repoName ILIKE :search', {
