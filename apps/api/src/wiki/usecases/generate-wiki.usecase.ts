@@ -29,7 +29,7 @@ export class GenerateWikiUseCase {
    * pipeline) runs inside `runPipeline()` which is fired asynchronously after
    * the observable is returned to the caller.
    */
-  execute(dto: GenerateWikiDto): Observable<SSEEvent> {
+  execute(dto: GenerateWikiDto, userId: string): Observable<SSEEvent> {
     const subject = new Subject<SSEEvent>();
 
     const normalisedUrl = normaliseRepoUrl(dto.repoUrl);
@@ -37,7 +37,7 @@ export class GenerateWikiUseCase {
 
     // Defer async work so the observable is returned before anything runs
     void Promise.resolve().then(() =>
-      this.runPipeline(dto, normalisedUrl, repoName, subject),
+      this.runPipeline(dto, normalisedUrl, repoName, userId, subject),
     );
 
     return subject.asObservable();
@@ -49,6 +49,7 @@ export class GenerateWikiUseCase {
     dto: GenerateWikiDto,
     normalisedUrl: string,
     repoName: string,
+    userId: string,
     subject: Subject<SSEEvent>,
   ): Promise<void> {
     let wikiId: string | undefined;
@@ -65,6 +66,7 @@ export class GenerateWikiUseCase {
         const existing = await this.wikiPersistenceService.findNonDeletedByRepoAndBranch(
           normalisedUrl,
           dto.branch,
+          userId,
           manager,
         );
 
@@ -86,6 +88,7 @@ export class GenerateWikiUseCase {
           normalisedUrl,
           repoName,
           dto.branch,
+          userId,
           manager,
         );
       });
@@ -101,7 +104,7 @@ export class GenerateWikiUseCase {
 
       // Invalidate Redis cache AFTER the DB transaction has committed
       if (existingId) {
-        await this.wikiCacheService.invalidate(existingId, normalisedUrl, dto.branch);
+        await this.wikiCacheService.invalidate(existingId, normalisedUrl, dto.branch, userId);
       }
 
       const context: AgentContext = {
@@ -109,6 +112,7 @@ export class GenerateWikiUseCase {
         repoUrl: normalisedUrl,
         branch: dto.branch,
         repoName,
+        userId,
       };
 
       // 2. Run the full pipeline — this is the long-running work

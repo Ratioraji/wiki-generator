@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from '../auth/auth.module';
 
 import { Wiki } from './entities/wiki.entity';
 import { WikiSubsystem } from './entities/wiki-subsystem.entity';
@@ -41,7 +42,7 @@ import { AskQuestionUseCase } from './usecases/ask-question.usecase';
 import { WikiController } from './controllers/wiki.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Wiki, WikiSubsystem, WikiFileMap])],
+  imports: [TypeOrmModule.forFeature([Wiki, WikiSubsystem, WikiFileMap]), AuthModule],
   controllers: [WikiController],
   providers: [
     // Third-party client factories

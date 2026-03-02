@@ -21,7 +21,7 @@ interface QaResult {
 
 // ── Input shape ───────────────────────────────────────────────────────────────
 
-type AskQuestionInput = { wikiId: string; question: string };
+type AskQuestionInput = { wikiId: string; question: string; userId?: string };
 
 const TOP_K = 5;
 
@@ -43,9 +43,10 @@ export class AskQuestionUseCase extends BaseUseCase<AskQuestionInput, QaResponse
   async execute({
     wikiId,
     question,
+    userId,
   }: AskQuestionInput): Promise<UseCaseResponse<QaResponseDto>> {
-    // 1. Ensure the wiki exists and its pipeline has completed
-    await this.validateWiki(wikiId);
+    // 1. Ensure the wiki exists, belongs to the user, and its pipeline has completed
+    await this.validateWiki(wikiId, userId);
 
     // 2. Embed the question into a query vector
     const queryVector = await this.embeddingService.embed(question);
@@ -74,20 +75,21 @@ export class AskQuestionUseCase extends BaseUseCase<AskQuestionInput, QaResponse
    * Throws NotFoundException if the wiki doesn't exist.
    * Throws BadRequestException if the wiki hasn't finished processing.
    */
-  private async validateWiki(wikiId: string): Promise<void> {
-    const cached = await this.wikiCacheService.getWiki(wikiId);
-
-    if (cached) {
-      if (cached.status !== WikiStatus.COMPLETE) {
-        throw new BadRequestException(
-          `Wiki "${wikiId}" is not ready for Q&A (status: ${cached.status})`,
-        );
+  private async validateWiki(wikiId: string, userId?: string): Promise<void> {
+    if (userId) {
+      const cached = await this.wikiCacheService.getWiki(wikiId, userId);
+      if (cached) {
+        if (cached.status !== WikiStatus.COMPLETE) {
+          throw new BadRequestException(
+            `Wiki "${wikiId}" is not ready for Q&A (status: ${cached.status})`,
+          );
+        }
+        return;
       }
-      return;
     }
 
-    // Cache miss — check DB
-    const wiki = await this.wikiPersistenceService.getFullWiki(wikiId);
+    // Cache miss — check DB (scoped by userId)
+    const wiki = await this.wikiPersistenceService.getFullWiki(wikiId, userId);
     if (!wiki) {
       throw new NotFoundException(`Wiki with id "${wikiId}" not found`);
     }

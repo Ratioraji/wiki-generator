@@ -15,22 +15,24 @@ export class GetWikiUseCase extends BaseUseCase<string, WikiResponseDto> {
     super();
   }
 
-  async execute(wikiId: string): Promise<UseCaseResponse<WikiResponseDto>> {
+  async execute(wikiId: string, userId?: string): Promise<UseCaseResponse<WikiResponseDto>> {
     // 1. Check Redis first
-    const cached = await this.wikiCacheService.getWiki(wikiId);
-    if (cached) {
-      return this.ok(cached);
+    if (userId) {
+      const cached = await this.wikiCacheService.getWiki(wikiId, userId);
+      if (cached) {
+        return this.ok(cached);
+      }
     }
 
-    // 2. Cache miss — fetch from DB
-    const wiki = await this.wikiPersistenceService.getFullWiki(wikiId);
+    // 2. Cache miss — fetch from DB (scoped by userId if provided)
+    const wiki = await this.wikiPersistenceService.getFullWiki(wikiId, userId);
     if (!wiki) {
       throw new NotFoundException(`Wiki with id "${wikiId}" not found`);
     }
 
     // 3. Repopulate cache for subsequent reads
     const dto = this.transform(wiki);
-    await this.wikiCacheService.cacheWiki(wikiId, wiki.repoUrl, wiki.branch, dto);
+    await this.wikiCacheService.cacheWiki(wikiId, wiki.repoUrl, wiki.branch, dto, wiki.userId);
 
     return this.ok(dto);
   }
