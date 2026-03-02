@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+import Link from 'next/link';
 import { useAuthContext } from '@/providers/auth-provider';
 
 export function Header() {
@@ -18,7 +20,7 @@ export function Header() {
         borderBottom: '1px solid var(--border-default)',
       }}
     >
-      <a
+      <Link
         href="/"
         style={{
           fontSize: '14px',
@@ -30,7 +32,7 @@ export function Header() {
         }}
       >
         Wiki Generator
-      </a>
+      </Link>
 
       <div
         style={{
@@ -47,7 +49,7 @@ export function Header() {
           }}
         >
           {user.avatarUrl && (
-            <img
+            <Image
               src={user.avatarUrl}
               alt={user.username}
               width={24}
