@@ -5,13 +5,16 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
   Index,
 } from 'typeorm';
 import { WikiStatus } from '../enums/wiki-status.enum';
+import { User } from '../../auth/entities/user.entity';
 import type { WikiSubsystem } from './wiki-subsystem.entity';
 import type { WikiFileMap } from './wiki-file-map.entity';
 
-@Index('idx_wikis_repo_branch_active', ['repoUrl', 'branch'], {
+@Index('idx_wikis_repo_branch_user_active', ['repoUrl', 'branch', 'userId'], {
   unique: true,
   where: '"deleted_at" IS NULL',
 })
@@ -61,6 +64,13 @@ export class Wiki {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  userId: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 
   @OneToMany('WikiSubsystem', 'wiki', { cascade: true })
   subsystems: WikiSubsystem[];

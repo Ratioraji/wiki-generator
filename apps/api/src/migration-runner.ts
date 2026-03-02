@@ -6,10 +6,12 @@
  */
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
+import { User } from './auth/entities/user.entity';
 import { Wiki } from './wiki/entities/wiki.entity';
 import { WikiSubsystem } from './wiki/entities/wiki-subsystem.entity';
 import { WikiFileMap } from './wiki/entities/wiki-file-map.entity';
 import { CreateWikiTables1741000000000 } from './migrations/1741000000000-CreateWikiTables';
+import { AddUsersAndWikiUserId1741100000000 } from './migrations/1741100000000-AddUsersAndWikiUserId';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -18,8 +20,8 @@ const dataSource = new DataSource({
   username: process.env.DATABASE_USER ?? 'postgres',
   password: process.env.DATABASE_PASSWORD ?? 'postgres',
   database: process.env.DATABASE_NAME ?? 'wiki_generator',
-  entities: [Wiki, WikiSubsystem, WikiFileMap],
-  migrations: [CreateWikiTables1741000000000],
+  entities: [User, Wiki, WikiSubsystem, WikiFileMap],
+  migrations: [CreateWikiTables1741000000000, AddUsersAndWikiUserId1741100000000],
   synchronize: false,
   logging: ['query', 'error', 'schema'],
 });

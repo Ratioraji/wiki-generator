@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
+import { User } from './auth/entities/user.entity';
 import { Wiki } from './wiki/entities/wiki.entity';
 import { WikiSubsystem } from './wiki/entities/wiki-subsystem.entity';
 import { WikiFileMap } from './wiki/entities/wiki-file-map.entity';
@@ -11,7 +12,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DATABASE_USER ?? 'postgres',
   password: process.env.DATABASE_PASSWORD ?? 'postgres',
   database: process.env.DATABASE_NAME ?? 'wiki_generator',
-  entities: [Wiki, WikiSubsystem, WikiFileMap],
+  entities: [User, Wiki, WikiSubsystem, WikiFileMap],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
   logging: ['query', 'error', 'schema'],
