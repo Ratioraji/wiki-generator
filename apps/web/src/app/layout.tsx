@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { QueryProvider } from '@/providers/query-provider';
+import { AuthProvider } from '@/providers/auth-provider';
+import { ProtectedRoute } from '@/components/protected-route';
 
 export const metadata: Metadata = {
   title: 'Wiki Generator',
@@ -27,7 +29,11 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-bg-primary font-mono text-text-primary antialiased">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <ProtectedRoute>{children}</ProtectedRoute>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

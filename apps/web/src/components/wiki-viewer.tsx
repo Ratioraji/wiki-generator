@@ -198,21 +198,26 @@ export function WikiViewer({ wiki }: WikiViewerProps) {
       <div
         style={{
           flex: 1,
-          overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          overflow: 'hidden',
         }}
       >
-        {/* Main content */}
+        {/* Main content — scrollable */}
         <div
           style={{
             flex: 1,
-            padding: '24px 32px',
-            maxWidth: '800px',
-            width: '100%',
+            overflowY: 'auto',
           }}
         >
+          <div
+            style={{
+              padding: '24px 32px',
+              maxWidth: '800px',
+              width: '100%',
+            }}
+          >
           {selectedId === 'qa' ? (
             <div>
               <h1
@@ -251,6 +256,7 @@ export function WikiViewer({ wiki }: WikiViewerProps) {
           ) : (
             <OverviewContent wiki={wiki} />
           )}
+          </div>
         </div>
 
         {/* Q&A panel at bottom (hidden when Q&A section is active) */}

@@ -20,7 +20,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, GitHubOAuthService, UserService, JwtStrategy],
+  providers: [AuthService, GitHubOAuthService, UserService, JwtStrategy, JwtAuthGuard],
   exports: [AuthService, JwtAuthGuard, JwtStrategy],
 })
 export class AuthModule {}

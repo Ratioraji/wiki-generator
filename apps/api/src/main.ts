@@ -2,7 +2,8 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as cookieParser from 'cookie-parser';
+import * as _cookieParser from 'cookie-parser';
+const cookieParser = ((_cookieParser as any).default ?? _cookieParser) as typeof _cookieParser;
 import type { ValidationError } from 'class-validator';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -70,6 +71,7 @@ async function bootstrap() {
     .setTitle('Wiki Generator API')
     .setDescription('Generate developer documentation from GitHub repositories')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

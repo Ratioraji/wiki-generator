@@ -9,7 +9,7 @@ import {
   Header,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -25,6 +25,7 @@ import { CheckExistingWikiDto } from '../dto/check-existing-wiki.dto';
 import { AskQuestionDto } from '../dto/ask-question.dto';
 
 @ApiTags('wiki')
+@ApiBearerAuth()
 @Controller('wiki')
 @UseGuards(JwtAuthGuard)
 export class WikiController {

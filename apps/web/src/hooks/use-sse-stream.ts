@@ -65,6 +65,7 @@ export function useSSEStream({
         const res = await fetch(`${API_BASE}/wiki/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ repoUrl, branch, forceRegenerate }),
           signal: controller.signal,
         });
