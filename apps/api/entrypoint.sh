@@ -1,8 +1,9 @@
 #!/bin/sh
 set -e
 
-# Start Redis in the background
-redis-server --daemonize yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+# Run database migrations before starting the app
+echo "Running migrations..."
+node dist/src/migration-runner.js
 
 # Start the Node.js app
 exec node dist/src/main.js

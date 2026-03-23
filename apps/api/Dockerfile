@@ -34,7 +34,7 @@ RUN npm install --omit=dev
 # ── Stage 4: Production image ────────────────────────────────────────────────
 FROM node:20-slim AS production
 
-RUN apt-get update && apt-get install -y --no-install-recommends git redis-server ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -47,8 +47,6 @@ COPY --from=prod-deps /app/package.json ./package.json
 
 ENV NODE_ENV=production
 ENV PORT=3001
-ENV REDIS_URL=redis://localhost:6379
-
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
